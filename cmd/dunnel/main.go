@@ -4,7 +4,7 @@ import (
 	"github.com/isikemre/dunnel/cmd/dunnel/commands"
 )
 
-func main()  {
+func main() {
 	commands.AddSubCommands()
 	commands.Execute()
 }

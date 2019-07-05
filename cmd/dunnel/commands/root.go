@@ -12,7 +12,7 @@ var rootCmd = &cobra.Command{
 	Short: "Dunnel is a lightweight, fast and secure tunnel between a Docker client and server",
 	Long: `It's a simple spell, but quite unbreakable.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Help is on the way")
+		cmd.Help()
 	},
 }
 
