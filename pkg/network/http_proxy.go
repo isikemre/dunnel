@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type Proxy struct{}
@@ -32,12 +33,12 @@ func PrintHTTP(conn *HttpConnection) {
 	for k, v := range conn.Response.Header {
 		fmt.Println(k, ":", v)
 	}
-	bytes, err := ioutil.ReadAll(conn.Response.Body)
+	bodyBytes, err := ioutil.ReadAll(conn.Response.Body)
 	if err != nil {
 		log.Fatalln(err)
 		panic("Error wile reading body")
 	}
-	fmt.Println(string(bytes))
+	fmt.Println(string(bodyBytes))
 	fmt.Println("==============================")
 }
 
@@ -50,7 +51,11 @@ func HandleHTTP() {
 	}
 }
 
+// for DEV mode
+var dunnelSession = newDunnelSession("123456")
+
 func (p *Proxy) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
+
 	var resp *http.Response
 	var err error
 	var req *http.Request
@@ -62,7 +67,6 @@ func (p *Proxy) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
 		req.Header.Set(name, value[0])
 	}
 	resp, err = client.Do(req)
-	defer r.Body.Close()
 
 	// combined for GET/POST
 	if err != nil {
@@ -77,18 +81,26 @@ func (p *Proxy) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	io.Copy(wr, resp.Body)
-	defer resp.Body.Close()
 
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	conn := &HttpConnection{r, resp}
 	PrintHTTP(conn)
+
+	if isWebSocket(r) {
+		handleWebSocket(wr, r, &dunnelSession)
+	} else {
+		r.Body.Close()
+		resp.Body.Close()
+	}
+
 }
 
-func StartHTTPProxy() {
+
+func StartHTTPProxy(port int) {
 	proxy := NewProxy()
 	fmt.Println("==============================")
-	err := http.ListenAndServe(":12345", proxy)
+	err := http.ListenAndServe(":"+strconv.Itoa(port), proxy)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err.Error())
 	}

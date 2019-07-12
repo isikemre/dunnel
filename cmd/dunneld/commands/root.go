@@ -16,24 +16,28 @@ var rootCmd = &cobra.Command{
 	Run: handleRootCommand,
 }
 
+// Flag Values
+var port int
+
 func handleRootCommand(cmd *cobra.Command, args []string)  {
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(1)
 
 	go func() {
-		network.StartHTTPProxy()
-		wg.Done()
-	}()
-
-	go func() {
-		network.StartTCPProxy()
+		network.StartHTTPProxy(port)
 		wg.Done()
 	}()
 
 	wg.Wait()
 }
 
+func initRootCommand() {
+	rootCmd.PersistentFlags().IntVar(&port, "port", 1217, "Set the port for dunnel to listen. Default: 1217")
+}
+
 func Execute() {
+	initRootCommand()
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
