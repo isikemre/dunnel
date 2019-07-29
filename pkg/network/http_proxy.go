@@ -55,18 +55,23 @@ func HandleHTTP() {
 var dunnelSession = newDunnelSession("123456")
 
 func (p *Proxy) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
-
 	var resp *http.Response
 	var err error
 	var req *http.Request
-	client := unixSocketClient("/var/run/docker.sock")
+
+	if isWebSocket(r) {
+		handleWebSocket(wr, r, &dunnelSession)
+		return
+	}
+
+	unixClient := unixSocketClient("/var/run/docker.sock")
 
 	log.Printf("%v %v", r.Method, r.RequestURI)
 	req, err = http.NewRequest(r.Method, "http+unix://docker"+r.RequestURI, r.Body)
 	for name, value := range r.Header {
 		req.Header.Set(name, value[0])
 	}
-	resp, err = client.Do(req)
+	resp, err = unixClient.Do(req)
 
 	// combined for GET/POST
 	if err != nil {
@@ -87,15 +92,9 @@ func (p *Proxy) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
 	conn := &HttpConnection{r, resp}
 	PrintHTTP(conn)
 
-	if isWebSocket(r) {
-		handleWebSocket(wr, r, &dunnelSession)
-	} else {
-		r.Body.Close()
-		resp.Body.Close()
-	}
-
+	r.Body.Close()
+	resp.Body.Close()
 }
-
 
 func StartHTTPProxy(port int) {
 	proxy := NewProxy()
